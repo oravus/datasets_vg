@@ -18,7 +18,7 @@ import torchvision
 from glob import glob
 from tqdm import tqdm
 from PIL import Image
-from os.path import join
+from os.path import join, realpath
 from scipy.io import loadmat
 
 import util
@@ -36,7 +36,8 @@ os.makedirs(join(raw_data_folder, "tokyo247"), exist_ok=True)
 matlab_struct_file_path = join(dataset_folder, 'raw_data', 'datasets', 'tokyo247.mat')
 
 mat_struct = loadmat(matlab_struct_file_path)["dbStruct"].item()
-db_images = [join('tokyo247', f[0].item().replace('.jpg', '.png')) for f in mat_struct[1]]
+# db_images = [join('tokyo247', f[0].item().replace('.jpg', '.png')) for f in mat_struct[1]]
+db_images = [f[0].item().replace('.jpg', '.png') for f in mat_struct[1]]
 
 db_utms = mat_struct[2].T
 dst_folder = join(dataset_folder, 'images', 'test', 'database')
@@ -54,6 +55,7 @@ for src_image_path, (utm_east, utm_north) in zip(tqdm(db_images, desc=f"Copy to 
     src_image_path = f"{dataset_folder}/raw_data/{src_image_path}"
     try:
         Image.open(src_image_path).save(f"{dst_folder}/{dst_image_name}")
+        # os.symlink(realpath(src_image_path),realpath(f"{dst_folder}/{dst_image_name}"))
     except OSError as e:
         print(f"Exception {e} with file {src_image_path}")
         raise e
@@ -84,5 +86,5 @@ for src_query_path in tqdm(src_queries_paths, desc=f"Copy to {dataset_folder}/im
     resized_pil_img.save(dst_image_path)
 
 map_builder.build_map_from_dataset(dataset_folder)
-shutil.rmtree(raw_data_folder)
+# shutil.rmtree(raw_data_folder)
 
