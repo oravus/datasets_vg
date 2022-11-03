@@ -1,9 +1,13 @@
 
 """
-In datasets/tokyo247/raw_data you should have unpacked the following tars:
-03814.tar, 03815.tar, 03816.tar, 03817.tar, 03818.tar, 03819.tar, 03820.tar, 03821.tar,
-03822.tar, 03823.tar, 03824.tar, 03825.tar, 03826.tar, 03827.tar, 03828.tar, 03829.tar.
-Moreover, there should be the file datasets/tokyo247/raw_data/datasets/tokyo247.mat
+In datasets/tokyo247/raw_data you should have unpacked the following folders:
+03814, 03815, 03816, 03817, 03818, 03819, 03820, 03821, 03822, 03823, 03824,
+03825, 03826, 03827, 03828, 03829.
+Each one of the above folders is extracted from the respective .tar file (e.g.
+03814 must be extracted from 03814.tar).
+You should also have the folder datasets/tokyo247/raw_data/247query_subset_v2,
+extracted from 247query_subset_v2.zip.
+Finally, there should be the file datasets/tokyo247/raw_data/datasets/tokyo247.mat
 """
 
 import os
@@ -28,33 +32,31 @@ os.makedirs(dataset_folder, exist_ok=True)
 os.makedirs(raw_data_folder, exist_ok=True)
 os.makedirs(join(raw_data_folder, "tokyo247"), exist_ok=True)
 
-def copy_images(dst_folder, src_images_paths, utms, is_247):
-    os.makedirs(dst_folder, exist_ok=True)
-    for src_image_path, (utm_east, utm_north) in zip(tqdm(src_images_paths, desc=f"Copy to {dst_folder}", ncols=100),
-                                                     utms):
-        src_image_name = os.path.basename(src_image_path)
-        latitude, longitude = utm.to_latlon(utm_east, utm_north, 54, 'S')
-        pano_id = src_image_name[:22]
-        if is_247:
-            tile_num = int(re.findall('_012_(\d+)\.png', src_image_name)[0])//30
-            timestamp = None
-        else:
-            tile_num = int(re.findall('_(\d+)_012\.jpg', src_image_name)[0])//30
-            timestamp = os.path.basename(os.path.dirname(src_image_path))[1:]  # YYYYMM, such as 201503
-        assert 0 <= tile_num < 12
-        dst_image_name = util.get_dst_image_name(latitude, longitude, pano_id=pano_id,
-                                                 tile_num=tile_num, timestamp=timestamp)
-        Image.open(f"{dataset_folder}/raw_data/{src_image_path}").save(f"{dst_folder}/{dst_image_name}")
-
 #### Database
 matlab_struct_file_path = join(dataset_folder, 'raw_data', 'datasets', 'tokyo247.mat')
 
 mat_struct = loadmat(matlab_struct_file_path)["dbStruct"].item()
-g_images = [join('tokyo247', f[0].item().replace('.jpg', '.png')) for f in mat_struct[1]]
+db_images = [join('tokyo247', f[0].item().replace('.jpg', '.png')) for f in mat_struct[1]]
 
-g_utms = mat_struct[2].T
+db_utms = mat_struct[2].T
 dst_folder = join(dataset_folder, 'images', 'test', 'database')
-copy_images(dst_folder, g_images, g_utms, is_247=True)
+
+os.makedirs(dst_folder, exist_ok=True)
+for src_image_path, (utm_east, utm_north) in zip(tqdm(db_images, desc=f"Copy to {dst_folder}", ncols=100),
+                                                 db_utms):
+    src_image_name = os.path.basename(src_image_path)
+    latitude, longitude = utm.to_latlon(utm_east, utm_north, 54, 'S')
+    pano_id = src_image_name[:22]
+    tile_num = int(re.findall('_012_(\d+)\.png', src_image_name)[0])//30
+    assert 0 <= tile_num < 12
+    dst_image_name = util.get_dst_image_name(latitude, longitude, pano_id=pano_id,
+                                             tile_num=tile_num)
+    src_image_path = f"{dataset_folder}/raw_data/{src_image_path}"
+    try:
+        Image.open(src_image_path).save(f"{dst_folder}/{dst_image_name}")
+    except OSError as e:
+        print(f"Exception {e} with file {src_image_path}")
+        raise e
 
 #### Queries
 filename = "247query_subset_v2.zip"
@@ -73,7 +75,11 @@ for src_query_path in tqdm(src_queries_paths, desc=f"Copy to {dataset_folder}/im
     pano_id = pano_id.replace(",jpg", "")
     dst_image_name = util.get_dst_image_name(latitude, longitude, pano_id=pano_id)
     dst_image_path = join(dataset_folder, "images", "test", "queries", dst_image_name)
-    pil_img = Image.open(src_query_path)
+    try:
+        pil_img = Image.open(src_query_path)
+    except OSError as e:
+        print(f"Exception {e} with file {src_query_path}")
+        raise e
     resized_pil_img = torchvision.transforms.Resize(480)(pil_img)
     resized_pil_img.save(dst_image_path)
 
