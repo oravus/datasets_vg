@@ -6,6 +6,7 @@ In datasets/pitts30k/raw_data there should be the following files/folders:
 """
 
 import os
+from os.path import realpath
 import re
 import utm
 import shutil
@@ -37,11 +38,12 @@ def copy_images(dst_folder, src_images_paths, utms):
                                              tile_num=tile_num, note=note)
         src_path = os.path.join(dataset_folder, 'raw_data', src_image_path)
         dst_path = os.path.join(dst_folder, dst_image_name)
-        shutil.move(src_path, dst_path)
+        os.symlink(realpath(src_path),realpath(dst_path))
+        # shutil.move(src_path, dst_path)
 
 
 for dataset in ["train", "val", "test"]:
-    matlab_struct_file_path = os.path.join(dataset_folder, "raw_data", "datasets", f"pitts250k_{dataset}.mat")
+    matlab_struct_file_path = os.path.join(dataset_folder, "raw_data", "datasets", f"pitts30k_{dataset}.mat")
     mat_struct = loadmat(matlab_struct_file_path)["dbStruct"].item()
     # Database
     g_images = [f[0].item() for f in mat_struct[1]]
@@ -53,4 +55,4 @@ for dataset in ["train", "val", "test"]:
     copy_images(os.path.join(dataset_folder, 'images', dataset, 'queries'), q_images, q_utms)
 
 map_builder.build_map_from_dataset(dataset_folder)
-shutil.rmtree(raw_data_folder)
+# shutil.rmtree(raw_data_folder)
