@@ -3,7 +3,7 @@ import os
 import shutil
 from glob import glob
 from tqdm import tqdm
-from os.path import join
+from os.path import join, realpath
 
 import util
 
@@ -17,7 +17,7 @@ default_cities = {
     'test': ["miami","athens","buenosaires","stockholm","bengaluru","kampala"]
 }
 
-csv_files_paths = sorted(glob(join("datasets", "mapillary_sls", "*", "*", "*", "postprocessed.csv"),
+csv_files_paths = sorted(glob(join("/work/qvpr/data/raw/Mapillary_Street_Level_Sequences/", "*", "*", "*", "postprocessed.csv"),
                               recursive=True))
 
 for csv_file_path in csv_files_paths:
@@ -33,7 +33,7 @@ for csv_file_path in csv_files_paths:
 
     folder = "database" if folder == "database" else "queries"
     train_val = "train" if city in default_cities["train"] else "val"
-    dst_folder = os.path.join('msls', train_val, folder)
+    dst_folder = os.path.join('./datasets/msls', train_val, folder)
 
     os.makedirs(dst_folder, exist_ok=True)
     for postprocessed_line, raw_line in zip(tqdm(postprocessed_lines, desc=city), raw_lines):
@@ -47,8 +47,10 @@ for csv_file_path in csv_files_paths:
         dst_image_name = util.get_dst_image_name(lat, lon, pano_id, timestamp=timestamp, note=note)
         src_image_path = os.path.join(os.path.dirname(csv_file_path), 'images', f'{pano_id}.jpg')
         dst_image_path = os.path.join(dst_folder, dst_image_name)
-        _ = shutil.move(src_image_path, dst_image_path)
+        # _ = shutil.move(src_image_path, dst_image_path)
+        os.symlink(realpath(src_image_path),realpath(dst_image_path))
 
-val_path = os.path.join('msls', 'val')
-test_path = os.path.join('msls', 'test')
+
+val_path = os.path.join('./datasets/msls', 'val')
+test_path = os.path.join('./datasets/msls', 'test')
 os.symlink(os.path.abspath(val_path), test_path)
